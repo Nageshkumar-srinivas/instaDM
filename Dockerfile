@@ -1,20 +1,25 @@
-# Use the official .NET 8 SDK image to build the app
+# -------- BUILD STAGE --------
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /app
+WORKDIR /src
 
-# Copy everything and build
+# Copy csproj and restore dependencies
+COPY instaDM.csproj ./
+RUN dotnet restore
+
+# Copy the rest of the app
 COPY . ./
-RUN dotnet publish -c Release -o out
 
-# Use the .NET 8 runtime image to run the app
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+# [Optional] Run build
+RUN dotnet build instaDM.csproj --configuration Release --output /app/build
+
+# Run publish to prepare final output
+RUN dotnet publish instaDM.csproj --configuration Release --output /app/publish --no-restore
+
+# -------- RUNTIME STAGE --------
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
-# Copy built output from build stage
-COPY --from=build /app/out ./
+COPY --from=build /app/publish .
 
-# Expose default port
-EXPOSE 80
-
-# Start the app
+EXPOSE 8080
 ENTRYPOINT ["dotnet", "instaDM.dll"]
